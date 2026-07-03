@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <!-- 単一ファイル版（スタンドアロン）: index.html / style.css / app.js を結合して生成 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Walk Record App - 汎用ウォーク記録</title>
+    <style>
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --text-main: #ffffff;
+    --text-muted: #aaaaaa;
+    --primary: #4caf50;
+    --primary-active: #388e3c;
+    --secondary: #2196f3;
+    --secondary-active: #1976d2;
+    --danger: #f44336;
+    --warning: #ff9800;
+    --border: #333333;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    line-height: 1.6;
+    padding-bottom: 40px;
+}
+
+/* ===== 画面共通 ===== */
+.screen.hidden {
+    display: none;
+}
+
+.screen-header {
+    background-color: var(--card-bg);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.screen-header h1 {
+    font-size: 1.15rem;
+    font-weight: bold;
+    text-align: center;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.header-spacer {
+    min-width: 60px;
+}
+
+.icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-width: 60px;
+    white-space: nowrap;
+}
+
+.icon-btn:active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+main {
+    padding: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.card h2 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    color: var(--warning);
+}
+
+.empty-note {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 32px 16px;
+}
+
+.hidden-input {
+    display: none;
+}
+
+/* ===== ボタン ===== */
+.actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.action-btn {
+    width: 100%;
+    padding: 24px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 16px;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.action-btn:active {
+    transform: scale(0.98);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-primary { background-color: var(--primary); }
+.btn-primary:active:not(:disabled) { background-color: var(--primary-active); }
+
+.btn-secondary { background-color: var(--secondary); }
+.btn-secondary:active:not(:disabled) { background-color: var(--secondary-active); }
+
+.btn-done {
+    background-color: #444;
+    color: var(--text-muted);
+}
+
+.new-event-btn {
+    font-size: 1.2rem;
+    padding: 18px;
+    margin-bottom: 24px;
+}
+
+.sub-btn {
+    background-color: #3a3a3a;
+    color: var(--text-main);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.sub-btn:active {
+    opacity: 0.8;
+}
+
+.sub-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.btn-accent {
+    background-color: var(--secondary);
+    color: white;
+}
+
+.btn-danger-outline {
+    background-color: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+}
+
+.block-btn {
+    display: block;
+    width: 100%;
+    margin: 8px 0;
+    padding: 14px;
+}
+
+/* ===== 大会一覧 ===== */
+.event-card {
+    padding: 16px;
+}
+
+.event-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.event-name {
+    font-size: 1.15rem;
+    font-weight: bold;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.status-draft { background-color: #555; color: #ddd; }
+.status-not_started { background-color: var(--warning); color: #000; }
+.status-in_progress { background-color: var(--secondary); color: #fff; }
+.status-completed { background-color: var(--primary); color: #fff; }
+
+.event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.event-meta.muted {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.event-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+/* ===== フォーム（大会作成・編集） ===== */
+.form-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+}
+
+.req {
+    color: var(--warning);
+    font-size: 0.75rem;
+    border: 1px solid var(--warning);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 4px;
+}
+
+.form-input {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 12px;
+    font-size: 1rem;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color-scheme: dark;
+    font-family: inherit;
+}
+
+textarea.form-input {
+    resize: vertical;
+}
+
+.point-editor {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.point-editor-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.point-editor-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.point-editor-btns .sub-btn {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
+.point-type-label {
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 2px 10px;
+    border-radius: 999px;
+}
+
+.type-start { background-color: var(--secondary); color: #fff; }
+.type-cp { background-color: #555; color: #fff; }
+.type-goal { background-color: var(--primary); color: #fff; }
+
+.point-dist-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.cumulative-value {
+    color: var(--warning);
+    font-weight: bold;
+}
+
+.add-cp-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    margin-top: 4px;
+}
+
+/* ===== 記録画面ダッシュボード ===== */
+.dash-state {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--warning);
+    margin-bottom: 4px;
+}
+
+.dash-target {
+    text-align: center;
+    font-size: 1rem;
+    color: var(--text-main);
+}
+
+.estimate-box {
+    text-align: center;
+    margin-top: 12px;
+}
+
+.time-display {
+    font-size: 3.2rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin: 4px 0;
+    color: var(--primary);
+}
+
+.estimate-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.dash-cell {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+}
+
+.dash-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.dash-value {
+    display: block;
+    font-size: 1.15rem;
+    font-weight: bold;
+}
+
+/* ===== 記録リスト ===== */
+.records-header {
+    margin-bottom: 16px;
+}
+
+.edit-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.record-item {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+}
+
+.record-item:last-child {
+    border-bottom: none;
+}
+
+.record-title {
+    font-size: 1.05rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.point-chip {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 1px 7px;
+    border-radius: 999px;
+    vertical-align: middle;
+}
+
+.record-dist {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.record-times {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.time-block {
+    flex: 1;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    transition: background-color 0.2s;
+}
+
+.time-block.clickable {
+    cursor: pointer;
+}
+
+.time-block.clickable:active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.time-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.time-value {
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.time-value.empty {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.record-stats {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.record-memo {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+}
+
+/* ===== 記録詳細 ===== */
+.detail-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 16px;
+    font-size: 0.95rem;
+}
+
+.detail-grid dt {
+    color: var(--text-muted);
+}
+
+.detail-grid dd {
+    font-weight: bold;
+    text-align: right;
+}
+
+.memo-text {
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+}
+
+/* ===== 共有テキスト ===== */
+.share-event-name {
+    text-align: center;
+    font-weight: bold;
+    color: var(--warning);
+    margin-bottom: 16px;
+}
+
+.share-block textarea {
+    display: block;
+    width: 100%;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    margin-bottom: 10px;
+}
+
+/* ===== モーダル ===== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.modal-content h3 {
+    margin-bottom: 4px;
+}
+
+.modal-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+#modal-target-name {
+    color: var(--warning);
+    margin-bottom: 16px;
+    font-weight: bold;
+}
+
+.modal-content .form-label {
+    text-align: left;
+}
+
+.time-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 1.6rem;
+    text-align: center;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    color-scheme: dark;
+}
+
+.date-input {
+    font-size: 1.2rem;
+}
+
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.modal-actions button {
+    flex: 1;
+    min-width: 100px;
+    padding: 16px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: white;
+}
+
+.btn-cancel { background-color: #555; }
+.btn-danger { background-color: var(--danger); flex-basis: 100%; }
+.btn-save { background-color: var(--primary); }
+
+    </style>
+</head>
+<body>
+    <div id="app">
+
+        <!-- ========== 大会一覧画面 ========== -->
+        <section id="screen-list" class="screen">
+            <header class="screen-header">
+                <span class="header-spacer"></span>
+                <h1>ウォーク記録</h1>
+                <button class="icon-btn" data-action="goto-settings">設定</button>
+            </header>
+            <main>
+                <button class="action-btn btn-primary new-event-btn" data-action="new-event">＋ 新規大会を作成</button>
+                <div id="event-list"></div>
+            </main>
+        </section>
+
+        <!-- ========== 大会作成・編集画面 ========== -->
+        <section id="screen-edit" class="screen hidden">
+            <header class="screen-header">
+                <button class="icon-btn" data-action="back-list">← 戻る</button>
+                <h1 id="edit-title">大会作成</h1>
+                <span class="header-spacer"></span>
+            </header>
+            <main>
+                <div id="edit-form"></div>
+                <button class="action-btn btn-primary" data-action="save-event">保存</button>
+            </main>
+        </section>
+
+        <!-- ========== 記録画面 ========== -->
+        <section id="screen-record" class="screen hidden">
+            <header class="screen-header">
+                <button class="icon-btn" data-action="back-list">← 戻る</button>
+                <h1 id="record-event-name">記録</h1>
+                <span class="header-spacer"></span>
+            </header>
+            <main>
+                <div id="record-dashboard" class="card"></div>
+                <div id="record-action" class="actions-container"></div>
+                <div class="records-container card">
+                    <div class="records-header">
+                        <h2>記録一覧</h2>
+                        <p class="edit-hint">※時刻をタップすると手動で修正・入力（押し忘れ対応）できます。</p>
+                    </div>
+                    <div id="record-list"></div>
+                </div>
+            </main>
+        </section>
+
+        <!-- ========== 記録詳細・振り返り画面 ========== -->
+        <section id="screen-detail" class="screen hidden">
+            <header class="screen-header">
+                <button class="icon-btn" data-action="back-list">← 戻る</button>
+                <h1>記録詳細</h1>
+                <span class="header-spacer"></span>
+            </header>
+            <main>
+                <div id="detail-content"></div>
+            </main>
+        </section>
+
+        <!-- ========== 共有テキスト作成画面 ========== -->
+        <section id="screen-share" class="screen hidden">
+            <header class="screen-header">
+                <button class="icon-btn" data-action="back-list">← 戻る</button>
+                <h1>共有テキスト</h1>
+                <span class="header-spacer"></span>
+            </header>
+            <main>
+                <p id="share-event-name" class="share-event-name"></p>
+
+                <div class="card share-block">
+                    <h2>X投稿用（完歩報告）</h2>
+                    <textarea id="share-x-text" rows="10" readonly></textarea>
+                    <button class="sub-btn btn-accent block-btn" data-action="copy-text" data-target="share-x-text">投稿文をコピー</button>
+                </div>
+
+                <div class="card share-block">
+                    <h2>記録中投稿用（途中経過）</h2>
+                    <textarea id="share-progress-text" rows="7" readonly></textarea>
+                    <button class="sub-btn btn-accent block-btn" data-action="copy-text" data-target="share-progress-text">投稿文をコピー</button>
+                </div>
+
+                <div class="card share-block">
+                    <h2>note振り返り用メモ</h2>
+                    <textarea id="share-note-text" rows="14" readonly></textarea>
+                    <button class="sub-btn btn-accent block-btn" data-action="copy-text" data-target="share-note-text">メモをコピー</button>
+                </div>
+
+                <div class="card share-block">
+                    <h2>メール本文用</h2>
+                    <textarea id="share-email-text" rows="14" readonly></textarea>
+                    <button class="sub-btn btn-accent block-btn" data-action="copy-text" data-target="share-email-text">本文をコピー</button>
+                </div>
+            </main>
+        </section>
+
+        <!-- ========== 設定・データ管理画面 ========== -->
+        <section id="screen-settings" class="screen hidden">
+            <header class="screen-header">
+                <button class="icon-btn" data-action="back-list">← 戻る</button>
+                <h1>設定・データ管理</h1>
+                <span class="header-spacer"></span>
+            </header>
+            <main>
+                <div class="card">
+                    <h2>バックアップ</h2>
+                    <p class="edit-hint">大会記録はこの端末のブラウザ内（LocalStorage）にのみ保存されます。機種変更やキャッシュ削除で消えるため、定期的なJSONバックアップをおすすめします。</p>
+                    <button class="sub-btn btn-accent block-btn" data-action="export-json">全大会データをJSON出力</button>
+                </div>
+                <div class="card">
+                    <h2>復元・インポート</h2>
+                    <button class="sub-btn block-btn" data-action="import-add">JSONファイルから追加インポート</button>
+                    <p class="edit-hint">現在のデータを残したまま、ファイル内の大会を追加します。</p>
+                    <button class="sub-btn btn-danger-outline block-btn" data-action="import-replace">JSONファイルで全置き換えインポート</button>
+                    <p class="edit-hint">現在の全データを削除し、ファイル内のデータで置き換えます（上級操作）。</p>
+                </div>
+                <div class="card">
+                    <h2>初期化</h2>
+                    <button class="sub-btn btn-danger-outline block-btn" data-action="reset-all">全データリセット</button>
+                </div>
+            </main>
+        </section>
+
+    </div>
+
+    <!-- 時刻手動入力・修正モーダル -->
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>時刻の手動入力・修正</h3>
+            <p id="modal-event-name" class="modal-sub"></p>
+            <p id="modal-target-name"></p>
+            <label class="form-label">日付
+                <input type="date" id="modal-date-input" class="time-input date-input">
+            </label>
+            <label class="form-label">時刻
+                <input type="time" id="modal-time-input" class="time-input">
+            </label>
+            <div class="modal-actions">
+                <button data-action="modal-cancel" class="btn-cancel">キャンセル</button>
+                <button data-action="modal-clear" class="btn-danger">記録を消す</button>
+                <button data-action="modal-save" class="btn-save">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSONインポート用の非表示ファイル入力 -->
+    <input type="file" id="import-file-add" accept=".json,application/json" class="hidden-input">
+    <input type="file" id="import-file-replace" accept=".json,application/json" class="hidden-input">
+
+    <script>
+'use strict';
+
+/* =====================================================
+ * 汎用ウォーク記録アプリ (Walk Record App)
+ * 100kmウォーク等の大会でスタート/CP/ゴールの通過時刻を記録する。
+ * データはLocalStorage（キー: walk_event_records）に保存。
+ * ===================================================== */
+
+// ---------- 定数 ----------
+const STORAGE_KEY = 'walk_event_records';
+const APP_NAME = 'generic-walk-record-app';
+const SCHEMA_VERSION = '1.0.0';
+
+const STATUS_LABELS = {
+    draft: '作成中',
+    not_started: '未開始',
+    in_progress: '記録中',
+    completed: '完了'
+};
+
+const IMPORT_ERROR_MSG = 'このJSONファイルは、本アプリのバックアップデータとして読み込めません。\nファイル形式を確認してください。';
+
+// ---------- アプリ状態 ----------
+let appData = null;
+let currentScreen = 'list';
+let currentEventId = null;   // 記録・詳細・共有画面の対象大会
+let editing = null;          // { event, isNew } 編集画面の作業コピー
+let editTarget = null;       // { pointId, field } 時刻修正モーダルの対象
+
+// ---------- 汎用ヘルパー ----------
+const $ = (id) => document.getElementById(id);
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+let idSeq = 0;
+function genId(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${(idSeq++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// ---------- 表示フォーマット ----------
+function fmtClock(ts) {
+    const d = new Date(ts);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function fmtDayClock(ts) {
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function sameDay(a, b) {
+    const da = new Date(a), db = new Date(b);
+    return da.getFullYear() === db.getFullYear() &&
+        da.getMonth() === db.getMonth() &&
+        da.getDate() === db.getDate();
+}
+
+// 基準日と同じ日なら HH:MM、日付またぎなら M/D HH:MM
+function fmtClockSmart(ts, baseTs) {
+    if (ts == null) return '--:--';
+    if (baseTs != null && !sameDay(ts, baseTs)) return fmtDayClock(ts);
+    return fmtClock(ts);
+}
+
+function fmtDuration(ms) {
+    if (ms == null || ms < 0 || !isFinite(ms)) return '--';
+    const totalMin = Math.floor(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h > 0 ? `${h}時間${m}分` : `${m}分`;
+}
+
+// 平均・区間ペース：「X分YY秒/km」
+function fmtPace(msPerKm) {
+    if (msPerKm == null || msPerKm <= 0 || !isFinite(msPerKm)) return '--';
+    const totalSec = Math.round(msPerKm / 1000);
+    return `${Math.floor(totalSec / 60)}分${pad2(totalSec % 60)}秒/km`;
+}
+
+function fmtKm(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '0';
+    return String(Math.round(n * 10) / 10);
+}
+
+function toDateInputValue(ts) {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// ---------- データ層 ----------
+function createInitialData() {
+    return { appName: APP_NAME, schemaVersion: SCHEMA_VERSION, updatedAt: Date.now(), events: [] };
+}
+
+function loadData() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const data = JSON.parse(raw);
+            if (data && Array.isArray(data.events)) return data;
+        }
+    } catch (e) {
+        console.error('データの読み込みに失敗しました', e);
+    }
+    return createInitialData();
+}
+
+function saveData() {
+    appData.updatedAt = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+function findEvent(eventId) {
+    return appData.events.find((ev) => ev.eventId === eventId) || null;
+}
+
+function createPoint(type, name) {
+    return {
+        pointId: genId('point'),
+        type: type,
+        name: name,
+        sectionDistanceKm: 0,
+        cumulativeDistanceKm: 0,
+        arrival: null,
+        departure: null,
+        memo: ''
+    };
+}
+
+function createNewEvent() {
+    const now = Date.now();
+    return {
+        eventId: genId('event'),
+        eventName: '',
+        eventDate: '',
+        memo: '',
+        status: 'draft',
+        createdAt: now,
+        updatedAt: now,
+        points: [createPoint('start', ''), createPoint('goal', '')]
+    };
+}
+
+// 記録系の変更後に必ず呼ぶ（更新日時とステータスを揃える）
+function touchEvent(ev) {
+    ev.updatedAt = Date.now();
+    ev.status = computeStatus(ev);
+}
+
+// ---------- 計算 ----------
+function recalculateCumulativeDistances(ev) {
+    let sum = 0;
+    ev.points.forEach((p, i) => {
+        if (i === 0) p.sectionDistanceKm = 0; // スタートは0固定
+        const d = typeof p.sectionDistanceKm === 'number' && isFinite(p.sectionDistanceKm) && p.sectionDistanceKm > 0
+            ? p.sectionDistanceKm : 0;
+        sum += d;
+        p.cumulativeDistanceKm = Math.round(sum * 100) / 100;
+    });
+}
+
+function totalDistanceKm(ev) {
+    const last = ev.points[ev.points.length - 1];
+    return last ? last.cumulativeDistanceKm : 0;
+}
+
+// 必須項目（大会名・全地点名・スタート以外の区間距離>0）がそろっているか
+function isCourseComplete(ev) {
+    if (!ev.eventName || !ev.eventName.trim()) return false;
+    const pts = ev.points;
+    if (!Array.isArray(pts) || pts.length < 2) return false;
+    if (pts[0].type !== 'start' || pts[pts.length - 1].type !== 'goal') return false;
+    for (const p of pts) {
+        if (!p.name || !p.name.trim()) return false;
+        if (p.type !== 'start' && !(p.sectionDistanceKm > 0)) return false;
+    }
+    return true;
+}
+
+function computeStatus(ev) {
+    if (!isCourseComplete(ev)) return 'draft';
+    const goal = ev.points[ev.points.length - 1];
+    if (goal.arrival != null) return 'completed';
+    if (ev.points[0].departure != null) return 'in_progress';
+    return 'not_started';
+}
+
+/*
+ * 記録の進行状態を points の記録状況から判定する。
+ *   before_start: スタート出発が未記録
+ *   moving      : points[index] へ移動中（到着待ち）
+ *   resting     : points[index] で休憩中（出発待ち）
+ *   finished    : ゴール到着済み
+ */
+function getCurrentState(ev) {
+    const pts = ev.points;
+    if (!pts.length) return { phase: 'finished', index: -1 };
+    if (pts[0].departure == null) return { phase: 'before_start', index: 0 };
+    for (let i = 1; i < pts.length; i++) {
+        const p = pts[i];
+        if (p.arrival == null) return { phase: 'moving', index: i };
+        if (p.type !== 'goal' && p.departure == null) return { phase: 'resting', index: i };
+    }
+    return { phase: 'finished', index: -1 };
+}
+
+// 直近の実績区間ペースから目標地点への到着予想時刻（ms）を返す
+function calculateEta(ev, targetIndex) {
+    const pts = ev.points;
+    const target = pts[targetIndex];
+    const prev = pts[targetIndex - 1];
+    if (!target || !prev || prev.departure == null) return null;
+    if (!(target.sectionDistanceKm > 0)) return null;
+
+    for (let j = targetIndex - 1; j >= 1; j--) {
+        if (pts[j].arrival != null && pts[j - 1].departure != null && pts[j].sectionDistanceKm > 0) {
+            const timeDiff = pts[j].arrival - pts[j - 1].departure;
+            if (timeDiff <= 0) return null; // 記録順序に矛盾がある
+            const pace = timeDiff / pts[j].sectionDistanceKm;
+            return prev.departure + pace * target.sectionDistanceKm;
+        }
+    }
+    return null; // 実績区間がまだ存在しない
+}
+
+function calculateFinishTime(ev) {
+    const start = ev.points[0];
+    const goal = ev.points[ev.points.length - 1];
+    if (!start || !goal || start.departure == null || goal.arrival == null) return null;
+    const t = goal.arrival - start.departure;
+    return t >= 0 ? t : null;
+}
+
+// 記録済みの最も早い時刻（日付またぎ表示の基準日）
+function getEventBaseTs(ev) {
+    let min = null;
+    for (const p of ev.points) {
+        for (const ts of [p.arrival, p.departure]) {
+            if (ts != null && (min === null || ts < min)) min = ts;
+        }
+    }
+    return min;
+}
+
+/*
+ * ダッシュボード・途中経過投稿で使う進行情報。
+ * covered = 記録済み地点までの確定累積距離
+ */
+function getProgressInfo(ev) {
+    const st = getCurrentState(ev);
+    const pts = ev.points;
+    const total = totalDistanceKm(ev);
+    const info = {
+        st, total,
+        stateText: '', targetName: null, targetSection: null,
+        etaTs: null, covered: 0
+    };
+
+    if (st.phase === 'before_start') {
+        info.stateText = 'スタート前';
+        if (pts.length > 1) {
+            info.targetName = pts[1].name;
+            info.targetSection = pts[1].sectionDistanceKm;
+        }
+    } else if (st.phase === 'moving') {
+        const target = pts[st.index];
+        info.stateText = `${target.name || '次の地点'}へ移動中`;
+        info.targetName = target.name;
+        info.targetSection = target.sectionDistanceKm;
+        info.etaTs = calculateEta(ev, st.index);
+        info.covered = pts[st.index - 1].cumulativeDistanceKm;
+    } else if (st.phase === 'resting') {
+        const here = pts[st.index];
+        const next = pts[st.index + 1];
+        info.stateText = `${here.name || 'CP'}で休憩中`;
+        if (next) {
+            info.targetName = next.name;
+            info.targetSection = next.sectionDistanceKm;
+        }
+        info.covered = here.cumulativeDistanceKm;
+    } else {
+        info.stateText = 'ゴール達成';
+        info.covered = total;
+    }
+    return info;
+}
+
+// 時刻の順序チェック（警告のみ。保存はブロックしない）
+function validateTimeOrder(ev) {
+    const warnings = [];
+    const pts = ev.points;
+    for (const p of pts) {
+        if (p.arrival != null && p.departure != null && p.departure < p.arrival) {
+            warnings.push(`${p.name || '（名称未設定）'}：出発時刻が到着時刻より早くなっています`);
+        }
+    }
+    for (let i = 1; i < pts.length; i++) {
+        const prev = pts[i - 1];
+        if (pts[i].arrival != null && prev.departure != null && pts[i].arrival < prev.departure) {
+            warnings.push(`${pts[i].name || '（名称未設定）'}：到着時刻が前地点（${prev.name || '（名称未設定）'}）の出発時刻より早くなっています`);
+        }
+    }
+    const goal = pts[pts.length - 1];
+    if (goal && goal.arrival != null) {
+        const hasBlank = pts.some((p, i) => {
+            if (i === pts.length - 1) return false;
+            if (p.type !== 'start' && p.arrival == null) return true;
+            if (p.type !== 'goal' && p.departure == null) return true;
+            return false;
+        });
+        if (hasBlank) warnings.push('ゴール到着が記録済みですが、未記録の地点があります');
+    }
+    return warnings;
+}
+
+// ---------- 画面切り替え ----------
+const SCREENS = ['list', 'edit', 'record', 'detail', 'share', 'settings'];
+
+function showScreen(name) {
+    currentScreen = name;
+    SCREENS.forEach((s) => $(`screen-${s}`).classList.toggle('hidden', s !== name));
+    window.scrollTo(0, 0);
+}
+
+function goToList() {
+    editing = null;
+    currentEventId = null;
+    renderEventList();
+    showScreen('list');
+}
+
+// ---------- 大会一覧画面 ----------
+function renderEventList() {
+    const listEl = $('event-list');
+    const events = [...appData.events].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    if (!events.length) {
+        listEl.innerHTML = '<p class="empty-note">大会データがまだありません。<br>「新規大会を作成」から作成してください。</p>';
+        return;
+    }
+
+    listEl.innerHTML = events.map((ev) => {
+        const start = ev.points[0];
+        const goal = ev.points[ev.points.length - 1];
+        return `
+        <div class="card event-card">
+            <div class="event-card-head">
+                <span class="event-name">${esc(ev.eventName || '（大会名未設定）')}</span>
+                <span class="status-badge status-${esc(ev.status)}">${STATUS_LABELS[ev.status] || esc(ev.status)}</span>
+            </div>
+            <div class="event-meta">
+                <span>開催日: ${esc(ev.eventDate || '未設定')}</span>
+                <span>総距離: ${fmtKm(totalDistanceKm(ev))}km</span>
+            </div>
+            <div class="event-meta">
+                <span>${esc(start ? start.name || '?' : '?')} → ${esc(goal ? goal.name || '?' : '?')}</span>
+            </div>
+            <div class="event-meta muted">最終更新: ${ev.updatedAt ? fmtDayClock(ev.updatedAt) : '--'}</div>
+            <div class="event-actions">
+                <button class="sub-btn btn-accent" data-action="open-record" data-eid="${esc(ev.eventId)}">開く（記録）</button>
+                <button class="sub-btn" data-action="edit-event" data-eid="${esc(ev.eventId)}">編集</button>
+                <button class="sub-btn" data-action="open-detail" data-eid="${esc(ev.eventId)}">記録詳細</button>
+                <button class="sub-btn" data-action="open-share" data-eid="${esc(ev.eventId)}">共有テキスト</button>
+                <button class="sub-btn" data-action="duplicate-event" data-eid="${esc(ev.eventId)}">複製</button>
+                <button class="sub-btn btn-danger-outline" data-action="delete-event" data-eid="${esc(ev.eventId)}">削除</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function duplicateEvent(eventId) {
+    const src = findEvent(eventId);
+    if (!src) return;
+    const copy = deepCopy(src);
+    copy.eventId = genId('event');
+    copy.eventName = `${src.eventName || '（大会名未設定）'}のコピー`;
+    copy.createdAt = Date.now();
+    copy.updatedAt = Date.now();
+    // コース情報のみ複製し、記録時刻はクリアする（次回大会での使い回しを想定）
+    copy.points.forEach((p) => {
+        p.pointId = genId('point');
+        p.arrival = null;
+        p.departure = null;
+    });
+    copy.status = computeStatus(copy);
+    appData.events.push(copy);
+    saveData();
+    renderEventList();
+}
+
+function deleteEvent(eventId) {
+    const ev = findEvent(eventId);
+    if (!ev) return;
+    const msg = 'この大会記録を削除します。\n記録済みの到着時刻・出発時刻も削除されます。\nこの操作は元に戻せません。\n本当に削除しますか？';
+    if (!confirm(msg)) return;
+    appData.events = appData.events.filter((e) => e.eventId !== eventId);
+    saveData();
+    renderEventList();
+}
+
+// ---------- 大会作成・編集画面 ----------
+function openEditScreen(eventId) {
+    if (eventId) {
+        const src = findEvent(eventId);
+        if (!src) return;
+        editing = { event: deepCopy(src), isNew: false };
+    } else {
+        editing = { event: createNewEvent(), isNew: true };
+    }
+    renderEditScreen();
+    showScreen('edit');
+}
+
+function renderEditScreen() {
+    const ev = editing.event;
+    $('edit-title').textContent = editing.isNew ? '大会作成' : '大会編集';
+    recalculateCumulativeDistances(ev);
+
+    const pointRows = ev.points.map((p, i) => renderPointEditor(p, i, ev)).join('');
+
+    $('edit-form').innerHTML = `
+        <div class="card">
+            <h2>大会情報</h2>
+            <label class="form-label">大会名 <span class="req">必須</span>
+                <input type="text" class="form-input" data-field="eventName" value="${esc(ev.eventName)}" placeholder="例：東京エクストリームウォーク100">
+            </label>
+            <label class="form-label">開催日
+                <input type="date" class="form-input" data-field="eventDate" value="${esc(ev.eventDate)}">
+            </label>
+            <label class="form-label">メモ
+                <textarea class="form-input" rows="3" data-field="eventMemo" placeholder="天候、目標、装備、注意点など">${esc(ev.memo)}</textarea>
+            </label>
+        </div>
+        <div class="card">
+            <h2>コース（地点）</h2>
+            <p class="edit-hint">距離は「直前の地点からの区間距離」を入力してください。累積距離は自動計算されます。</p>
+            ${pointRows}
+            <button class="sub-btn btn-accent add-cp-btn" data-action="add-cp">＋ CPを追加</button>
+        </div>`;
+}
+
+function renderPointEditor(p, index, ev) {
+    const pid = esc(p.pointId);
+
+    if (p.type === 'start') {
+        return `
+        <div class="point-editor">
+            <div class="point-editor-head"><span class="point-type-label type-start">スタート</span></div>
+            <label class="form-label">スタート地点名 <span class="req">必須</span>
+                <input type="text" class="form-input" data-pid="${pid}" data-pfield="name" value="${esc(p.name)}" placeholder="例：小田原城址公園">
+            </label>
+            <div class="point-dist-row"><span>区間距離: 0km（固定）</span><span>累積: <span class="cumulative-value">0km</span></span></div>
+        </div>`;
+    }
+
+    if (p.type === 'goal') {
+        return `
+        <div class="point-editor">
+            <div class="point-editor-head"><span class="point-type-label type-goal">ゴール</span></div>
+            <label class="form-label">ゴール地点名 <span class="req">必須</span>
+                <input type="text" class="form-input" data-pid="${pid}" data-pfield="name" value="${esc(p.name)}" placeholder="例：有明ガーデン">
+            </label>
+            <label class="form-label">区間距離（km） <span class="req">必須</span>
+                <input type="number" class="form-input" data-pid="${pid}" data-pfield="sectionDistanceKm" value="${p.sectionDistanceKm}" min="0" step="0.1">
+            </label>
+            <div class="point-dist-row"><span>直前地点からの距離</span><span>累積: <span class="cumulative-value" data-cum-pid="${pid}">${fmtKm(p.cumulativeDistanceKm)}km</span></span></div>
+        </div>`;
+    }
+
+    // チェックポイント
+    const upDisabled = index <= 1 ? ' disabled' : '';
+    const downDisabled = index >= ev.points.length - 2 ? ' disabled' : '';
+    return `
+    <div class="point-editor">
+        <div class="point-editor-head">
+            <span class="point-type-label type-cp">CP</span>
+            <div class="point-editor-btns">
+                <button class="sub-btn" data-action="move-up" data-pid="${pid}"${upDisabled}>上へ</button>
+                <button class="sub-btn" data-action="move-down" data-pid="${pid}"${downDisabled}>下へ</button>
+                <button class="sub-btn btn-danger-outline" data-action="delete-cp" data-pid="${pid}">削除</button>
+            </div>
+        </div>
+        <label class="form-label">CP名 <span class="req">必須</span>
+            <input type="text" class="form-input" data-pid="${pid}" data-pfield="name" value="${esc(p.name)}" placeholder="例：第1CP">
+        </label>
+        <label class="form-label">区間距離（km） <span class="req">必須</span>
+            <input type="number" class="form-input" data-pid="${pid}" data-pfield="sectionDistanceKm" value="${p.sectionDistanceKm}" min="0" step="0.1">
+        </label>
+        <div class="point-dist-row"><span>直前地点からの距離</span><span>累積: <span class="cumulative-value" data-cum-pid="${pid}">${fmtKm(p.cumulativeDistanceKm)}km</span></span></div>
+        <label class="form-label">メモ
+            <textarea class="form-input" rows="2" data-pid="${pid}" data-pfield="memo" placeholder="補給、制限時間、注意点など">${esc(p.memo)}</textarea>
+        </label>
+    </div>`;
+}
+
+// 区間距離の入力に合わせて累積距離の表示だけ更新する
+function updateCumulativeLabels() {
+    const ev = editing.event;
+    recalculateCumulativeDistances(ev);
+    ev.points.forEach((p) => {
+        const el = document.querySelector(`[data-cum-pid="${CSS.escape(p.pointId)}"]`);
+        if (el) el.textContent = `${fmtKm(p.cumulativeDistanceKm)}km`;
+    });
+}
+
+function addCheckpoint() {
+    const pts = editing.event.points;
+    const cp = createPoint('cp', '新しいCP');
+    pts.splice(pts.length - 1, 0, cp); // ゴールの手前に追加
+    renderEditScreen();
+}
+
+function deleteCheckpoint(pointId) {
+    const pts = editing.event.points;
+    const i = pts.findIndex((p) => p.pointId === pointId);
+    if (i < 0 || pts[i].type !== 'cp') return;
+    const p = pts[i];
+    const msg = (p.arrival != null || p.departure != null)
+        ? 'このチェックポイントには記録済みの時刻があります。\n削除すると到着時刻・出発時刻も削除されます。\n本当に削除しますか？'
+        : `チェックポイント「${p.name || '（名称未設定）'}」を削除しますか？`;
+    if (!confirm(msg)) return;
+    pts.splice(i, 1);
+    renderEditScreen();
+}
+
+function moveCheckpoint(pointId, dir) {
+    const pts = editing.event.points;
+    const i = pts.findIndex((p) => p.pointId === pointId);
+    const j = i + dir;
+    if (i < 1 || pts[i].type !== 'cp') return;
+    if (j < 1 || j > pts.length - 2 || pts[j].type !== 'cp') return;
+    [pts[i], pts[j]] = [pts[j], pts[i]];
+    renderEditScreen();
+}
+
+function saveEditedEvent() {
+    const ev = editing.event;
+    recalculateCumulativeDistances(ev);
+
+    const warnings = validateTimeOrder(ev);
+    if (warnings.length &&
+        !confirm(`以下の警告があります。\n\n・${warnings.join('\n・')}\n\nこのまま保存しますか？`)) {
+        return;
+    }
+
+    ev.status = computeStatus(ev);
+    ev.updatedAt = Date.now();
+
+    const idx = appData.events.findIndex((e) => e.eventId === ev.eventId);
+    if (idx >= 0) appData.events[idx] = ev;
+    else appData.events.push(ev);
+
+    saveData();
+
+    if (ev.status === 'draft') {
+        alert('必須項目（大会名・地点名・区間距離）が不足しているため、「作成中」として保存しました。');
+    }
+    goToList();
+}
+
+// ---------- 記録画面 ----------
+function openRecordScreen(eventId) {
+    currentEventId = eventId;
+    renderRecordScreen();
+    showScreen('record');
+}
+
+function renderRecordScreen() {
+    const ev = findEvent(currentEventId);
+    if (!ev) { goToList(); return; }
+
+    $('record-event-name').textContent = ev.eventName || '（大会名未設定）';
+
+    const info = getProgressInfo(ev);
+    const st = info.st;
+    const pts = ev.points;
+    const goal = pts[pts.length - 1];
+    const startDep = pts[0] ? pts[0].departure : null;
+
+    // 経過時間・平均ペース（スタート前は --:--）
+    let elapsedMs = null;
+    let avgPaceMs = null;
+    if (startDep != null) {
+        const endTs = (st.phase === 'finished' && goal.arrival != null) ? goal.arrival : Date.now();
+        elapsedMs = endTs - startDep;
+        if (info.covered > 0 && elapsedMs > 0) avgPaceMs = elapsedMs / info.covered;
+    }
+
+    const targetHtml = st.phase === 'finished'
+        ? '<strong>ゴール達成！</strong>'
+        : `次の目標: <strong>${esc(info.targetName || 'ー')}</strong>${info.targetSection != null ? `（区間 ${fmtKm(info.targetSection)}km）` : ''}`;
+
+    $('record-dashboard').innerHTML = `
+        <div class="dash-state">${esc(info.stateText)}</div>
+        <div class="dash-target">${targetHtml}</div>
+        <div class="estimate-box">
+            <p>到着予想時刻</p>
+            <div class="time-display">${info.etaTs ? fmtClock(info.etaTs) : '--:--'}</div>
+            <p class="estimate-note">※直近の実績区間ペースを元に計算しています</p>
+        </div>
+        <div class="dash-grid">
+            <div class="dash-cell"><span class="dash-label">累積距離</span><span class="dash-value">${fmtKm(info.covered)}km</span></div>
+            <div class="dash-cell"><span class="dash-label">残り距離</span><span class="dash-value">${fmtKm(Math.max(info.total - info.covered, 0))}km</span></div>
+            <div class="dash-cell"><span class="dash-label">経過時間</span><span class="dash-value">${elapsedMs != null ? fmtDuration(elapsedMs) : '--:--'}</span></div>
+            <div class="dash-cell"><span class="dash-label">平均ペース</span><span class="dash-value">${avgPaceMs ? fmtPace(avgPaceMs) : '--'}</span></div>
+        </div>`;
+
+    // アクションボタン（現在の状態に応じて1つ表示）
+    let btnHtml;
+    if (st.phase === 'before_start') {
+        btnHtml = '<button class="action-btn btn-secondary" data-action="record-now">スタート出発を記録</button>';
+    } else if (st.phase === 'moving') {
+        const label = pts[st.index].type === 'goal' ? 'ゴール到着を記録' : '到着を記録';
+        btnHtml = `<button class="action-btn btn-primary" data-action="record-now">${label}</button>`;
+    } else if (st.phase === 'resting') {
+        btnHtml = '<button class="action-btn btn-secondary" data-action="record-now">出発を記録</button>';
+    } else {
+        btnHtml = '<button class="action-btn btn-done" disabled>記録完了</button>';
+    }
+    $('record-action').innerHTML = btnHtml;
+
+    // 記録一覧
+    const baseTs = getEventBaseTs(ev);
+    $('record-list').innerHTML = pts.map((p, i) =>
+        renderPointRecord(ev, p, i, baseTs, { interactive: true, fullDate: false })
+    ).join('');
+}
+
+function renderPointRecord(ev, p, index, baseTs, opts) {
+    const pts = ev.points;
+    const ft = (ts) => ts == null ? '--:--' : (opts.fullDate ? fmtDayClock(ts) : fmtClockSmart(ts, baseTs));
+
+    const timeBlock = (label, ts, field) => {
+        const clickAttr = opts.interactive
+            ? ` data-action="open-time-modal" data-pid="${esc(p.pointId)}" data-field="${field}"`
+            : '';
+        return `
+        <div class="time-block${opts.interactive ? ' clickable' : ''}"${clickAttr}>
+            <span class="time-label">${label}</span>
+            <span class="time-value ${ts != null ? '' : 'empty'}">${ft(ts)}</span>
+        </div>`;
+    };
+
+    let blocks = '';
+    if (p.type !== 'start') blocks += timeBlock('到着', p.arrival, 'arrival');
+    if (p.type !== 'goal') blocks += timeBlock('出発', p.departure, 'departure');
+
+    // 滞在時間・区間所要時間・区間ペース
+    const stats = [];
+    if (p.type === 'cp' && p.arrival != null && p.departure != null && p.departure >= p.arrival) {
+        stats.push(`滞在 ${fmtDuration(p.departure - p.arrival)}`);
+    }
+    if (index > 0 && p.arrival != null && pts[index - 1].departure != null) {
+        const sectionMs = p.arrival - pts[index - 1].departure;
+        if (sectionMs >= 0) {
+            stats.push(`区間 ${fmtDuration(sectionMs)}`);
+            if (p.sectionDistanceKm > 0) stats.push(`ペース ${fmtPace(sectionMs / p.sectionDistanceKm)}`);
+        }
+    }
+
+    const chip = p.type === 'start'
+        ? '<span class="point-chip type-start">S</span>'
+        : p.type === 'goal'
+            ? '<span class="point-chip type-goal">G</span>'
+            : '<span class="point-chip type-cp">CP</span>';
+
+    const distText = p.type === 'start'
+        ? '0km'
+        : `区間${fmtKm(p.sectionDistanceKm)}km / 累積${fmtKm(p.cumulativeDistanceKm)}km`;
+
+    return `
+    <div class="record-item">
+        <div class="record-title">
+            <span>${chip} ${esc(p.name || '（名称未設定）')}</span>
+            <span class="record-dist">${distText}</span>
+        </div>
+        <div class="record-times">${blocks}</div>
+        ${stats.length ? `<div class="record-stats">${stats.map(esc).join('　')}</div>` : ''}
+        ${p.memo ? `<div class="record-memo">メモ: ${esc(p.memo)}</div>` : ''}
+    </div>`;
+}
+
+function recordNow() {
+    const ev = findEvent(currentEventId);
+    if (!ev) return;
+    const st = getCurrentState(ev);
+    if (st.phase === 'finished') return;
+
+    let index, field, label;
+    if (st.phase === 'before_start') {
+        index = 0; field = 'departure'; label = '出発';
+    } else if (st.phase === 'moving') {
+        index = st.index; field = 'arrival'; label = '到着';
+    } else {
+        index = st.index; field = 'departure'; label = '出発';
+    }
+
+    const p = ev.points[index];
+    const now = Date.now();
+    if (!confirm(`${p.name || '（名称未設定）'}の${label}を現在時刻 ${fmtClock(now)} で記録しますか？`)) return;
+
+    p[field] = now;
+    touchEvent(ev);
+    saveData();
+    renderRecordScreen();
+}
+
+// ---------- 時刻手動入力・修正モーダル ----------
+function openTimeModal(pointId, field) {
+    const ev = findEvent(currentEventId);
+    if (!ev) return;
+    const p = ev.points.find((x) => x.pointId === pointId);
+    if (!p) return;
+
+    editTarget = { pointId, field };
+
+    $('modal-event-name').textContent = ev.eventName || '（大会名未設定）';
+    $('modal-target-name').textContent = `${p.name || '（名称未設定）'} - ${field === 'arrival' ? '到着' : '出発'}`;
+
+    const existing = p[field];
+    if (existing != null) {
+        $('modal-date-input').value = toDateInputValue(existing);
+        $('modal-time-input').value = fmtClock(existing);
+    } else {
+        // 新規入力時：大会内の最新記録の日付、なければ今日
+        let baseTs = null;
+        for (const pt of ev.points) {
+            for (const ts of [pt.arrival, pt.departure]) {
+                if (ts != null && (baseTs === null || ts > baseTs)) baseTs = ts;
+            }
+        }
+        $('modal-date-input').value = toDateInputValue(baseTs != null ? baseTs : Date.now());
+        $('modal-time-input').value = '';
+    }
+
+    $('edit-modal').classList.remove('hidden');
+}
+
+function closeTimeModal() {
+    $('edit-modal').classList.add('hidden');
+    editTarget = null;
+}
+
+function saveEditedTime() {
+    if (!editTarget) return;
+    const ev = findEvent(currentEventId);
+    if (!ev) return;
+    const p = ev.points.find((x) => x.pointId === editTarget.pointId);
+    if (!p) return;
+
+    const dateStr = $('modal-date-input').value;
+    const timeStr = $('modal-time-input').value;
+    if (!dateStr) { alert('日付を入力してください'); return; }
+    if (!timeStr) { alert('時刻を入力してください'); return; }
+
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [h, mi] = timeStr.split(':').map(Number);
+    const ts = new Date(y, mo - 1, d, h, mi, 0, 0).getTime();
+
+    const oldValue = p[editTarget.field];
+    p[editTarget.field] = ts;
+
+    const warnings = validateTimeOrder(ev);
+    if (warnings.length &&
+        !confirm(`以下の警告があります。\n\n・${warnings.join('\n・')}\n\nこのまま保存しますか？`)) {
+        p[editTarget.field] = oldValue; // 保存を取りやめて元に戻す
+        return;
+    }
+
+    touchEvent(ev);
+    saveData();
+    closeTimeModal();
+    renderRecordScreen();
+}
+
+function clearEditedTime() {
+    if (!editTarget) return;
+    const ev = findEvent(currentEventId);
+    if (!ev) return;
+    const p = ev.points.find((x) => x.pointId === editTarget.pointId);
+    if (!p) return;
+
+    if (!confirm('この記録を削除しますか？')) return;
+    p[editTarget.field] = null;
+    touchEvent(ev);
+    saveData();
+    closeTimeModal();
+    renderRecordScreen();
+}
+
+// ---------- 記録詳細・振り返り画面 ----------
+function renderDetailScreen() {
+    const ev = findEvent(currentEventId);
+    if (!ev) { goToList(); return; }
+
+    const start = ev.points[0];
+    const goal = ev.points[ev.points.length - 1];
+    const total = totalDistanceKm(ev);
+    const finishMs = calculateFinishTime(ev);
+    const avgPace = (finishMs != null && total > 0) ? finishMs / total : null;
+
+    const row = (label, value) => `<dt>${label}</dt><dd>${value}</dd>`;
+
+    $('detail-content').innerHTML = `
+        <div class="card">
+            <h2>${esc(ev.eventName || '（大会名未設定）')}</h2>
+            <dl class="detail-grid">
+                ${row('開催日', esc(ev.eventDate || '未設定'))}
+                ${row('ステータス', STATUS_LABELS[ev.status] || esc(ev.status))}
+                ${row('総距離', `${fmtKm(total)}km`)}
+                ${row('スタート時刻', start && start.departure != null ? fmtDayClock(start.departure) : '--:--')}
+                ${row('ゴール時刻', goal && goal.arrival != null ? fmtDayClock(goal.arrival) : '--:--')}
+                ${row('完歩時間', finishMs != null ? fmtDuration(finishMs) : '--')}
+                ${row('平均ペース', avgPace ? fmtPace(avgPace) : '--')}
+            </dl>
+        </div>
+        <div class="card">
+            <h2>各地点の記録</h2>
+            <div>${ev.points.map((p, i) => renderPointRecord(ev, p, i, null, { interactive: false, fullDate: true })).join('')}</div>
+        </div>
+        ${ev.memo ? `<div class="card"><h2>大会メモ</h2><p class="memo-text">${esc(ev.memo)}</p></div>` : ''}`;
+}
+
+// ---------- 共有テキスト ----------
+function pointRecordLines(ev) {
+    return ev.points.map((p) => {
+        const parts = [];
+        if (p.type !== 'start') parts.push(`到着 ${p.arrival != null ? fmtDayClock(p.arrival) : '--:--'}`);
+        if (p.type !== 'goal') parts.push(`出発 ${p.departure != null ? fmtDayClock(p.departure) : '--:--'}`);
+        return `${p.name || '（名称未設定）'}（${fmtKm(p.cumulativeDistanceKm)}km）：${parts.join(' / ')}`;
+    });
+}
+
+function generateXPostText(ev) {
+    const start = ev.points[0];
+    const goal = ev.points[ev.points.length - 1];
+    const finishMs = calculateFinishTime(ev);
+    return `${ev.eventName || '大会'}、完歩しました！
+
+距離：${fmtKm(totalDistanceKm(ev))}km
+記録：${finishMs != null ? fmtDuration(finishMs) : '--'}
+スタート：${start ? start.name : ''}
+ゴール：${goal ? goal.name : ''}
+
+今回もきつかったけど、最後まで歩き切れました。
+
+#100kmウォーク
+#ウルトラウォーキング`;
+}
+
+function generateProgressPostText(ev) {
+    const info = getProgressInfo(ev);
+    const remaining = Math.max(info.total - info.covered, 0);
+    return `${ev.eventName || '大会'}、現在${fmtKm(info.covered)}km地点まで来ました。
+
+次は${info.targetName || 'ゴール'}を目指します。
+残り約${fmtKm(remaining)}km。
+
+#100kmウォーク
+#ウルトラウォーキング`;
+}
+
+function generateNoteTemplate(ev) {
+    const finishMs = calculateFinishTime(ev);
+    return `## 大会記録
+
+大会名：${ev.eventName || ''}
+開催日：${ev.eventDate || ''}
+距離：${fmtKm(totalDistanceKm(ev))}km
+完歩時間：${finishMs != null ? fmtDuration(finishMs) : ''}
+
+## 各CP記録
+
+${pointRecordLines(ev).join('\n')}
+
+## よかったこと
+
+## きつかったこと
+
+## 次回改善したいこと
+`;
+}
+
+function generateEmailText(ev) {
+    const start = ev.points[0];
+    const goal = ev.points[ev.points.length - 1];
+    const finishMs = calculateFinishTime(ev);
+    return `大会記録を共有します。
+
+大会名：${ev.eventName || '（大会名未設定）'}
+開催日：${ev.eventDate || '未設定'}
+距離：${fmtKm(totalDistanceKm(ev))}km
+スタート：${start ? start.name : ''}
+ゴール：${goal ? goal.name : ''}
+完歩時間：${finishMs != null ? fmtDuration(finishMs) : '--'}
+
+【各地点の記録】
+${pointRecordLines(ev).join('\n')}
+
+【メモ】
+${ev.memo || '（なし）'}`;
+}
+
+function renderShareScreen() {
+    const ev = findEvent(currentEventId);
+    if (!ev) { goToList(); return; }
+    $('share-event-name').textContent = ev.eventName || '（大会名未設定）';
+    $('share-x-text').value = generateXPostText(ev);
+    $('share-progress-text').value = generateProgressPostText(ev);
+    $('share-note-text').value = generateNoteTemplate(ev);
+    $('share-email-text').value = generateEmailText(ev);
+}
+
+async function copyText(targetId, btn) {
+    const text = $(targetId).value;
+    let ok = false;
+
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(text);
+            ok = true;
+        } catch (e) { /* フォールバックへ */ }
+    }
+    if (!ok) {
+        // file:// 等の非セキュアコンテキスト用フォールバック
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand('copy'); } catch (e) { /* 失敗表示へ */ }
+        ta.remove();
+    }
+
+    if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = ok ? 'コピーしました ✓' : 'コピーに失敗しました';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+    }
+}
+
+// ---------- JSONエクスポート・インポート ----------
+function exportJson() {
+    const json = JSON.stringify(appData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const d = new Date();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `walk-records-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function validateImportData(data) {
+    if (!data || typeof data !== 'object') return false;
+    if (!data.schemaVersion) return false;
+    if (!Array.isArray(data.events)) return false;
+    for (const ev of data.events) {
+        if (!ev || typeof ev !== 'object') return false;
+        if (typeof ev.eventName !== 'string') return false;
+        if (!Array.isArray(ev.points) || ev.points.length < 2) return false;
+        if (ev.points[0].type !== 'start') return false;
+        if (ev.points[ev.points.length - 1].type !== 'goal') return false;
+        for (const p of ev.points) {
+            if (!p || typeof p !== 'object') return false;
+            if (typeof p.sectionDistanceKm !== 'number') return false;
+            if (!(p.arrival === null || p.arrival === undefined || typeof p.arrival === 'number')) return false;
+            if (!(p.departure === null || p.departure === undefined || typeof p.departure === 'number')) return false;
+        }
+    }
+    return true;
+}
+
+// インポートした大会データの欠損項目を補完し、内部整合を取り直す
+function normalizeImportedEvent(raw) {
+    const ev = deepCopy(raw);
+    if (typeof ev.eventId !== 'string' || !ev.eventId) ev.eventId = genId('event');
+    if (typeof ev.eventDate !== 'string') ev.eventDate = '';
+    if (typeof ev.memo !== 'string') ev.memo = '';
+    if (typeof ev.createdAt !== 'number') ev.createdAt = Date.now();
+    if (typeof ev.updatedAt !== 'number') ev.updatedAt = Date.now();
+    ev.points.forEach((p) => {
+        if (typeof p.pointId !== 'string' || !p.pointId) p.pointId = genId('point');
+        if (typeof p.name !== 'string') p.name = '';
+        if (typeof p.memo !== 'string') p.memo = '';
+        if (p.arrival === undefined) p.arrival = null;
+        if (p.departure === undefined) p.departure = null;
+    });
+    recalculateCumulativeDistances(ev);
+    ev.status = computeStatus(ev);
+    return ev;
+}
+
+function handleImportFile(file, mode) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        let data;
+        try {
+            data = JSON.parse(reader.result);
+        } catch (e) {
+            alert(IMPORT_ERROR_MSG);
+            return;
+        }
+        if (!validateImportData(data)) {
+            alert(IMPORT_ERROR_MSG);
+            return;
+        }
+
+        if (mode === 'replace') {
+            const msg = '現在保存されているすべての大会記録を削除し、インポートしたデータで置き換えます。\nこの操作は元に戻せません。\n本当に実行しますか？';
+            if (!confirm(msg)) return;
+            appData = createInitialData();
+        }
+
+        const existingIds = new Set(appData.events.map((e) => e.eventId));
+        let count = 0;
+        for (const raw of data.events) {
+            const ev = normalizeImportedEvent(raw);
+            if (existingIds.has(ev.eventId)) ev.eventId = genId('event'); // 重複時は別大会として追加
+            existingIds.add(ev.eventId);
+            appData.events.push(ev);
+            count++;
+        }
+        saveData();
+        alert(`${count}件の大会データをインポートしました。`);
+        goToList();
+    };
+    reader.onerror = () => alert('ファイルの読み込みに失敗しました。');
+    reader.readAsText(file);
+}
+
+function resetAllData() {
+    const msg = 'すべての大会記録を削除します。\nこの操作は元に戻せません。\n本当に削除しますか？';
+    if (!confirm(msg)) return;
+    appData = createInitialData();
+    saveData();
+    goToList();
+}
+
+// ---------- イベントハンドラ（クリック委譲） ----------
+document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el || el.disabled) return;
+    const action = el.dataset.action;
+    const eid = el.dataset.eid;
+
+    switch (action) {
+        case 'new-event': openEditScreen(null); break;
+        case 'edit-event': openEditScreen(eid); break;
+        case 'open-record': openRecordScreen(eid); break;
+        case 'open-detail': currentEventId = eid; renderDetailScreen(); showScreen('detail'); break;
+        case 'open-share': currentEventId = eid; renderShareScreen(); showScreen('share'); break;
+        case 'duplicate-event': duplicateEvent(eid); break;
+        case 'delete-event': deleteEvent(eid); break;
+        case 'back-list': goToList(); break;
+        case 'goto-settings': showScreen('settings'); break;
+        case 'add-cp': addCheckpoint(); break;
+        case 'delete-cp': deleteCheckpoint(el.dataset.pid); break;
+        case 'move-up': moveCheckpoint(el.dataset.pid, -1); break;
+        case 'move-down': moveCheckpoint(el.dataset.pid, 1); break;
+        case 'save-event': saveEditedEvent(); break;
+        case 'record-now': recordNow(); break;
+        case 'open-time-modal': openTimeModal(el.dataset.pid, el.dataset.field); break;
+        case 'modal-save': saveEditedTime(); break;
+        case 'modal-clear': clearEditedTime(); break;
+        case 'modal-cancel': closeTimeModal(); break;
+        case 'copy-text': copyText(el.dataset.target, el); break;
+        case 'export-json': exportJson(); break;
+        case 'import-add': $('import-file-add').click(); break;
+        case 'import-replace': $('import-file-replace').click(); break;
+        case 'reset-all': resetAllData(); break;
+    }
+});
+
+// ---------- イベントハンドラ（フォーム入力委譲） ----------
+document.addEventListener('input', (e) => {
+    if (!editing || currentScreen !== 'edit') return;
+    const el = e.target;
+    const ev = editing.event;
+
+    if (el.dataset.field === 'eventName') { ev.eventName = el.value; return; }
+    if (el.dataset.field === 'eventDate') { ev.eventDate = el.value; return; }
+    if (el.dataset.field === 'eventMemo') { ev.memo = el.value; return; }
+
+    const pfield = el.dataset.pfield;
+    if (!pfield) return;
+    const p = ev.points.find((x) => x.pointId === el.dataset.pid);
+    if (!p) return;
+
+    if (pfield === 'sectionDistanceKm') {
+        const v = parseFloat(el.value);
+        p.sectionDistanceKm = (isNaN(v) || v < 0) ? 0 : v;
+        updateCumulativeLabels();
+    } else if (pfield === 'name' || pfield === 'memo') {
+        p[pfield] = el.value;
+    }
+});
+
+// ---------- ファイル選択（インポート） ----------
+$('import-file-add').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleImportFile(file, 'add');
+    e.target.value = '';
+});
+$('import-file-replace').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleImportFile(file, 'replace');
+    e.target.value = '';
+});
+
+// ---------- 初期化 ----------
+function init() {
+    appData = loadData();
+    // 読み込み時に累積距離とステータスを再計算して整合を取る
+    appData.events.forEach((ev) => {
+        recalculateCumulativeDistances(ev);
+        ev.status = computeStatus(ev);
+    });
+    renderEventList();
+    showScreen('list');
+
+    // 記録画面表示中は30秒ごとに経過時間・状態を更新
+    setInterval(() => {
+        if (currentScreen === 'record' && $('edit-modal').classList.contains('hidden')) {
+            renderRecordScreen();
+        }
+    }, 30000);
+}
+
+init();
+
+    </script>
+</body>
+</html>
