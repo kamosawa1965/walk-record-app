@@ -333,6 +333,51 @@ textarea.form-input {
     font-weight: bold;
 }
 
+/* 距離の入力方式（累積距離／区間距離）の切り替え */
+.mode-select {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.mode-select-title {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.mode-select-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.mode-option {
+    flex: 1;
+    min-width: 130px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.mode-option input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--secondary);
+}
+
+.mode-option:has(input:checked) {
+    border-color: var(--secondary);
+    background-color: rgba(33, 150, 243, 0.12);
+}
+
 .add-cp-btn {
     display: block;
     width: 100%;
@@ -400,6 +445,11 @@ textarea.form-input {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-top: 16px;
+}
+
+/* 1行分を使い切るセル（経過時間など） */
+.dash-cell-wide {
+    grid-column: 1 / -1;
 }
 
 .dash-cell {
@@ -826,12 +876,18 @@ textarea.form-input {
 // ---------- 定数 ----------
 const STORAGE_KEY = 'walk_event_records';
 const APP_NAME = 'generic-walk-record-app';
-const SCHEMA_VERSION = '1.1.0';
+const SCHEMA_VERSION = '1.2.0';
 
 // 基準歩行速度（km/h）の許容範囲と初期値
 const WALKING_SPEED_MIN_KMH = 2.0;
 const WALKING_SPEED_MAX_KMH = 8.0;
 const WALKING_SPEED_DEFAULT_KMH = 5.0;
+
+// 距離入力方式（大会編集画面での入力のしかた。保存される距離データ自体は変わらない）
+const DISTANCE_MODE_CUMULATIVE = 'cumulative'; // スタートからの累積距離を入力
+const DISTANCE_MODE_SECTION = 'section';       // 直前地点からの区間距離を入力
+const DISTANCE_MODE_NEW_DEFAULT = DISTANCE_MODE_CUMULATIVE;  // 新規作成時の初期値
+const DISTANCE_MODE_LEGACY_DEFAULT = DISTANCE_MODE_SECTION;  // 方式未設定の既存データ
 
 const STATUS_LABELS = {
     draft: '作成中',
@@ -935,6 +991,16 @@ function getDefaultWalkingSpeed() {
     );
 }
 
+// ---------- 距離入力方式 ----------
+// 有効値は 'cumulative' / 'section' のみ。それ以外は fallback を返す。
+function normalizeDistanceInputMode(value, fallback) {
+    return (value === DISTANCE_MODE_CUMULATIVE || value === DISTANCE_MODE_SECTION) ? value : fallback;
+}
+
+function isCumulativeMode(ev) {
+    return normalizeDistanceInputMode(ev.distanceInputMode, DISTANCE_MODE_LEGACY_DEFAULT) === DISTANCE_MODE_CUMULATIVE;
+}
+
 // 「1kmあたり：約12分00秒」の参考表示
 function fmtPerKm(speedKmh) {
     const sp = normalizeWalkingSpeed(speedKmh);
@@ -954,8 +1020,8 @@ function createInitialData() {
     };
 }
 
-// 旧スキーマ(1.0.0)からの移行：settings と各大会の基準歩行速度を補完する。
-// 既存の記録（地点・時刻・メモ等）は変更しない。
+// 旧スキーマ(1.0.0 / 1.1.0)からの移行：settings・基準歩行速度・距離入力方式を補完する。
+// 既存の記録（地点・時刻・距離・メモ等）は変更しない。
 function migrateData(data) {
     if (!data.settings || typeof data.settings !== 'object') data.settings = {};
     data.settings.defaultWalkingSpeedKmh = normalizeWalkingSpeed(
@@ -963,6 +1029,9 @@ function migrateData(data) {
     data.events.forEach((ev) => {
         ev.baseWalkingSpeedKmh = normalizeWalkingSpeed(
             ev.baseWalkingSpeedKmh, data.settings.defaultWalkingSpeedKmh);
+        // 方式未設定の既存大会は、作成時と同じ「区間距離入力」のまま扱う
+        ev.distanceInputMode = normalizeDistanceInputMode(
+            ev.distanceInputMode, DISTANCE_MODE_LEGACY_DEFAULT);
     });
     data.schemaVersion = SCHEMA_VERSION;
     return data;
@@ -1011,6 +1080,7 @@ function createNewEvent() {
         eventDate: '',
         memo: '',
         baseWalkingSpeedKmh: getDefaultWalkingSpeed(),
+        distanceInputMode: DISTANCE_MODE_NEW_DEFAULT,
         status: 'draft',
         createdAt: now,
         updatedAt: now,
@@ -1331,6 +1401,7 @@ function renderEditScreen() {
     $('edit-title').textContent = editing.isNew ? '大会作成' : '大会編集';
     recalculateCumulativeDistances(ev);
 
+    const cumMode = isCumulativeMode(ev);
     const pointRows = ev.points.map((p, i) => renderPointEditor(p, i, ev)).join('');
 
     $('edit-form').innerHTML = `
@@ -1352,10 +1423,44 @@ function renderEditScreen() {
         </div>
         <div class="card">
             <h2>コース（地点）</h2>
-            <p class="edit-hint">距離は「直前の地点からの区間距離」を入力してください。累積距離は自動計算されます。</p>
+            <div class="mode-select">
+                <span class="mode-select-title">距離の入力方式</span>
+                <div class="mode-select-options">
+                    <label class="mode-option"><input type="radio" name="distance-input-mode" value="${DISTANCE_MODE_CUMULATIVE}"${cumMode ? ' checked' : ''}> 累積距離</label>
+                    <label class="mode-option"><input type="radio" name="distance-input-mode" value="${DISTANCE_MODE_SECTION}"${cumMode ? '' : ' checked'}> 区間距離</label>
+                </div>
+            </div>
+            <p class="edit-hint">${cumMode
+                ? '大会資料の「スタートからの累積距離」をそのまま入力してください。区間距離は自動計算されます。'
+                : '「直前の地点からの区間距離」を入力してください。累積距離は自動計算されます。'}</p>
             ${pointRows}
             <button class="sub-btn btn-accent add-cp-btn" data-action="add-cp">＋ CPを追加</button>
         </div>`;
+}
+
+/*
+ * 距離入力欄（CP・ゴール共通）。
+ * 累積距離モードでは累積を入力して区間距離を自動計算し、区間距離モードではその逆。
+ * どちらのモードでも、自動計算された「もう一方の距離」を入力欄の直下に表示する。
+ */
+function renderDistanceField(p, ev) {
+    const pid = esc(p.pointId);
+    const cumMode = isCumulativeMode(ev);
+
+    const label = cumMode ? '累積距離（km）' : '区間距離（km）';
+    const pfield = cumMode ? 'cumulativeDistanceKm' : 'sectionDistanceKm';
+    const value = cumMode ? p.cumulativeDistanceKm : p.sectionDistanceKm;
+    // 自動計算された「もう一方の距離」
+    const derived = cumMode
+        ? `直前地点から: <span class="cumulative-value" data-sec-pid="${pid}">${fmtKm(p.sectionDistanceKm)}km</span>`
+        : `累積距離: <span class="cumulative-value" data-cum-pid="${pid}">${fmtKm(p.cumulativeDistanceKm)}km</span>`;
+
+    return `
+        <label class="form-label">${label} <span class="req">必須</span>
+            <input type="number" class="form-input" data-pid="${pid}" data-pfield="${pfield}" value="${value}" min="0" step="0.1">
+        </label>
+        <div class="point-dist-row"><span>${derived}</span></div>
+        <p class="input-error hidden" data-warn-pid="${pid}"></p>`;
 }
 
 function renderPointEditor(p, index, ev) {
@@ -1379,10 +1484,7 @@ function renderPointEditor(p, index, ev) {
             <label class="form-label">ゴール地点名 <span class="req">必須</span>
                 <input type="text" class="form-input" data-pid="${pid}" data-pfield="name" value="${esc(p.name)}" placeholder="例：有明ガーデン">
             </label>
-            <label class="form-label">区間距離（km） <span class="req">必須</span>
-                <input type="number" class="form-input" data-pid="${pid}" data-pfield="sectionDistanceKm" value="${p.sectionDistanceKm}" min="0" step="0.1">
-            </label>
-            <div class="point-dist-row"><span>直前地点からの距離</span><span>累積: <span class="cumulative-value" data-cum-pid="${pid}">${fmtKm(p.cumulativeDistanceKm)}km</span></span></div>
+            ${renderDistanceField(p, ev)}
         </div>`;
     }
 
@@ -1402,23 +1504,67 @@ function renderPointEditor(p, index, ev) {
         <label class="form-label">CP名 <span class="req">必須</span>
             <input type="text" class="form-input" data-pid="${pid}" data-pfield="name" value="${esc(p.name)}" placeholder="例：第1CP">
         </label>
-        <label class="form-label">区間距離（km） <span class="req">必須</span>
-            <input type="number" class="form-input" data-pid="${pid}" data-pfield="sectionDistanceKm" value="${p.sectionDistanceKm}" min="0" step="0.1">
-        </label>
-        <div class="point-dist-row"><span>直前地点からの距離</span><span>累積: <span class="cumulative-value" data-cum-pid="${pid}">${fmtKm(p.cumulativeDistanceKm)}km</span></span></div>
+        ${renderDistanceField(p, ev)}
         <label class="form-label">メモ
             <textarea class="form-input" rows="2" data-pid="${pid}" data-pfield="memo" placeholder="補給、制限時間、注意点など">${esc(p.memo)}</textarea>
         </label>
     </div>`;
 }
 
-// 区間距離の入力に合わせて累積距離の表示だけ更新する
-function updateCumulativeLabels() {
+/*
+ * 累積距離モードの入力を区間距離に変換する。
+ * 入力欄に並んだ累積距離を先頭から読み、隣との差を sectionDistanceKm に落とす。
+ * （保存されるデータは従来どおり sectionDistanceKm が正で、累積はそこから再計算される）
+ * 前地点より小さい累積が入力された場合は区間距離0に丸め、警告文言を返す。
+ */
+function applyCumulativeInputs() {
     const ev = editing.event;
-    recalculateCumulativeDistances(ev);
+    const warnPids = [];
+    let prevCum = 0;
+
+    ev.points.forEach((p, i) => {
+        if (i === 0) { // スタートは常に0
+            p.sectionDistanceKm = 0;
+            p.cumulativeDistanceKm = 0;
+            return;
+        }
+        const el = document.querySelector(`[data-pid="${CSS.escape(p.pointId)}"][data-pfield="cumulativeDistanceKm"]`);
+        const raw = el ? parseFloat(el.value) : NaN;
+        const cum = (isNaN(raw) || raw < 0) ? prevCum : raw; // 未入力・不正値は区間0として扱う
+
+        if (!isNaN(raw) && raw >= 0 && raw < prevCum) warnPids.push(p.pointId);
+
+        const section = Math.round(Math.max(cum - prevCum, 0) * 100) / 100;
+        p.sectionDistanceKm = section;
+        prevCum = Math.round((prevCum + section) * 100) / 100;
+        p.cumulativeDistanceKm = prevCum;
+    });
+
+    return warnPids;
+}
+
+// 入力に合わせて、自動計算された「もう一方の距離」の表示だけを更新する
+// （画面全体を再描画すると入力中のフォーカスが外れるため、ラベルのみ差し替える）
+function updateDistanceLabels(warnPids) {
+    const ev = editing.event;
+    const warnSet = new Set(warnPids || []);
+
     ev.points.forEach((p) => {
-        const el = document.querySelector(`[data-cum-pid="${CSS.escape(p.pointId)}"]`);
-        if (el) el.textContent = `${fmtKm(p.cumulativeDistanceKm)}km`;
+        const pidSel = CSS.escape(p.pointId);
+        const cumEl = document.querySelector(`[data-cum-pid="${pidSel}"]`);
+        if (cumEl) cumEl.textContent = `${fmtKm(p.cumulativeDistanceKm)}km`;
+        const secEl = document.querySelector(`[data-sec-pid="${pidSel}"]`);
+        if (secEl) secEl.textContent = `${fmtKm(p.sectionDistanceKm)}km`;
+
+        const warnEl = document.querySelector(`[data-warn-pid="${pidSel}"]`);
+        if (warnEl) {
+            if (warnSet.has(p.pointId)) {
+                warnEl.textContent = '累積距離が直前の地点より小さくなっています。区間距離は0kmとして計算します。';
+                warnEl.classList.remove('hidden');
+            } else {
+                warnEl.classList.add('hidden');
+            }
+        }
     });
 }
 
@@ -1438,6 +1584,14 @@ function deleteCheckpoint(pointId) {
         ? 'このチェックポイントには記録済みの時刻があります。\n削除すると到着時刻・出発時刻も削除されます。\n本当に削除しますか？'
         : `チェックポイント「${p.name || '（名称未設定）'}」を削除しますか？`;
     if (!confirm(msg)) return;
+
+    // 累積距離モードでは、入力済みの累積距離（＝総距離）を保つため、
+    // 削除するCPの区間距離を次の地点に足し込んでから取り除く。
+    if (isCumulativeMode(editing.event) && pts[i + 1]) {
+        const merged = (pts[i + 1].sectionDistanceKm || 0) + (p.sectionDistanceKm || 0);
+        pts[i + 1].sectionDistanceKm = Math.round(merged * 100) / 100;
+    }
+
     pts.splice(i, 1);
     renderEditScreen();
 }
@@ -1454,6 +1608,7 @@ function moveCheckpoint(pointId, dir) {
 
 function saveEditedEvent() {
     const ev = editing.event;
+    ev.distanceInputMode = normalizeDistanceInputMode(ev.distanceInputMode, DISTANCE_MODE_NEW_DEFAULT);
     recalculateCumulativeDistances(ev);
 
     // 基準歩行速度の検証（不正値は保存しない）
@@ -1485,6 +1640,28 @@ function saveEditedEvent() {
     goToList();
 }
 
+/*
+ * 最後に記録した地点と時刻。
+ * 保存済みの記録をそのまま読むだけで、推定や再計算は行わない。
+ * 戻り値: { name, kind: '到着'|'出発', ts } / 未記録なら { name: null, ts: null }
+ */
+function getLastRecord(ev) {
+    const st = getCurrentState(ev);
+    const pts = ev.points;
+
+    if (st.phase === 'before_start') return { name: null, kind: null, ts: null };
+    if (st.phase === 'moving') {
+        const p = pts[st.index - 1]; // 直前地点を出発したのが最後の記録
+        return { name: p.name, kind: '出発', ts: p.departure };
+    }
+    if (st.phase === 'resting') {
+        const p = pts[st.index];     // 現在地点に到着したのが最後の記録
+        return { name: p.name, kind: '到着', ts: p.arrival };
+    }
+    const goal = pts[pts.length - 1];
+    return { name: goal.name, kind: '到着', ts: goal.arrival };
+}
+
 // ---------- 記録画面 ----------
 function openRecordScreen(eventId) {
     currentEventId = eventId;
@@ -1504,13 +1681,11 @@ function renderRecordScreen() {
     const goal = pts[pts.length - 1];
     const startDep = pts[0] ? pts[0].departure : null;
 
-    // 経過時間・平均ペース（スタート前は --:--）
+    // 経過時間（スタート出発からの実時間。スタート前は --:--）
     let elapsedMs = null;
-    let avgPaceMs = null;
     if (startDep != null) {
         const endTs = (st.phase === 'finished' && goal.arrival != null) ? goal.arrival : Date.now();
         elapsedMs = endTs - startDep;
-        if (info.covered > 0 && elapsedMs > 0) avgPaceMs = elapsedMs / info.covered;
     }
 
     const targetHtml = st.phase === 'finished'
@@ -1519,6 +1694,7 @@ function renderRecordScreen() {
 
     // ETA表示（実績ペース or 基準速度による仮ETA。日付またぎは M/D HH:MM）
     const baseTs = getEventBaseTs(ev);
+    const last = getLastRecord(ev); // 実績表示用（保存済みの記録をそのまま表示する）
     const isBaseEta = info.eta != null && info.eta.source === 'base';
     const etaNote = isBaseEta
         ? `※基準速度 ${info.eta.speedKmh.toFixed(1)}km/h（登録ペース）による仮予測です`
@@ -1533,10 +1709,9 @@ function renderRecordScreen() {
             <p class="estimate-note">${etaNote}</p>
         </div>
         <div class="dash-grid">
-            <div class="dash-cell"><span class="dash-label">累積距離</span><span class="dash-value">${fmtKm(info.covered)}km</span></div>
-            <div class="dash-cell"><span class="dash-label">残り距離</span><span class="dash-value">${fmtKm(Math.max(info.total - info.covered, 0))}km</span></div>
-            <div class="dash-cell"><span class="dash-label">経過時間</span><span class="dash-value">${elapsedMs != null ? fmtDuration(elapsedMs) : '--:--'}</span></div>
-            <div class="dash-cell"><span class="dash-label">平均ペース</span><span class="dash-value">${avgPaceMs ? fmtPace(avgPaceMs) : '--'}</span></div>
+            <div class="dash-cell"><span class="dash-label">最終記録</span><span class="dash-value">${last.ts != null ? `${esc(last.name || '（名称未設定）')} ${last.kind}` : 'まだ記録がありません'}</span></div>
+            <div class="dash-cell"><span class="dash-label">最終記録時刻</span><span class="dash-value">${last.ts != null ? fmtClockSmart(last.ts, baseTs) : '--:--'}</span></div>
+            <div class="dash-cell dash-cell-wide"><span class="dash-label">経過時間（スタートから）</span><span class="dash-value">${elapsedMs != null ? fmtDuration(elapsedMs) : '--:--'}</span></div>
         </div>`;
 
     // アクションボタン（現在の状態に応じて1つ表示）
@@ -1918,6 +2093,8 @@ function normalizeImportedEvent(raw) {
     if (typeof ev.updatedAt !== 'number') ev.updatedAt = Date.now();
     // 旧JSON（1.0.0）や不正値は標準歩行速度で補完する
     ev.baseWalkingSpeedKmh = normalizeWalkingSpeed(ev.baseWalkingSpeedKmh, getDefaultWalkingSpeed());
+    // 距離入力方式を持たない旧JSONは「区間距離入力」として扱う（距離の値自体は変更しない）
+    ev.distanceInputMode = normalizeDistanceInputMode(ev.distanceInputMode, DISTANCE_MODE_LEGACY_DEFAULT);
     ev.points.forEach((p) => {
         if (typeof p.pointId !== 'string' || !p.pointId) p.pointId = genId('point');
         if (typeof p.name !== 'string') p.name = '';
@@ -2074,10 +2251,23 @@ document.addEventListener('input', (e) => {
     if (pfield === 'sectionDistanceKm') {
         const v = parseFloat(el.value);
         p.sectionDistanceKm = (isNaN(v) || v < 0) ? 0 : v;
-        updateCumulativeLabels();
+        recalculateCumulativeDistances(ev);
+        updateDistanceLabels();
+    } else if (pfield === 'cumulativeDistanceKm') {
+        updateDistanceLabels(applyCumulativeInputs());
     } else if (pfield === 'name' || pfield === 'memo') {
         p[pfield] = el.value;
     }
+});
+
+// ---------- イベントハンドラ（距離入力方式の切り替え） ----------
+document.addEventListener('change', (e) => {
+    if (!editing || currentScreen !== 'edit') return;
+    if (e.target.name !== 'distance-input-mode') return;
+    // 保存済みの距離データは変換せず、入力欄の見せ方だけを切り替える
+    editing.event.distanceInputMode = normalizeDistanceInputMode(
+        e.target.value, DISTANCE_MODE_NEW_DEFAULT);
+    renderEditScreen();
 });
 
 // ---------- ファイル選択（インポート） ----------
