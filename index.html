@@ -4,7 +4,7 @@
     <!-- 単一ファイル版（スタンドアロン）: index.html / style.css / app.js を結合して生成 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Walk Record App - 汎用ウォーク記録</title>
+    <title>ツギマデ｜長距離ウォーク進捗管理</title>
     <style>
 :root {
     --bg-color: #121212;
@@ -64,6 +64,33 @@ body {
 
 .header-spacer {
     min-width: 60px;
+}
+
+/* アプリ名（ブランド表示）: 一覧画面ヘッダー内に文字のみで表示 */
+.app-brand {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+}
+
+.app-brand .app-brand-name {
+    font-size: 1.25rem;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-brand .app-brand-tagline {
+    margin-top: 2px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .icon-btn {
@@ -711,7 +738,10 @@ textarea.form-input {
         <section id="screen-list" class="screen">
             <header class="screen-header">
                 <span class="header-spacer"></span>
-                <h1>ウォーク記録</h1>
+                <div class="app-brand">
+                    <h1 class="app-brand-name">ツギマデ</h1>
+                    <p class="app-brand-tagline">次のチェックポイントまで。</p>
+                </div>
                 <button class="icon-btn" data-action="goto-settings">設定</button>
             </header>
             <main>
